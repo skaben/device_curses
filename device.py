@@ -115,15 +115,22 @@ class BoilerplateDevice(BaseDevice):
     def check_cheat_position(char_index: int, word_str: str) -> tuple[str, int, int]:
         """Check if cheat is possible and return selected word and its start and end positions."""
         brackets = {"[": "]", "(": ")", "{": "}", "<": ">"}
-        bracket = word_str[char_index]
-        if bracket not in brackets and bracket not in brackets.values():
+        reverted_brackets = {v: k for k, v in brackets.items()}
+        char = word_str[char_index]
+        if char not in brackets.keys() and char not in reverted_brackets.keys():
             return "", -1, -1
 
-        direction = 1 if bracket in brackets else -1
-        control_char = brackets[bracket] if direction == 1 else {v: k for k, v in brackets.items()}[bracket]
-        start_pos, end_pos = char_index, char_index - 1 if direction == -1 else -1
+        direction = 1 if char in brackets.keys() else -1
 
-        for i in range(char_index + direction, len(word_str) if direction == 1 else -1, direction):
+        if direction == 1:
+            control_char = brackets[char]
+            start_pos, end_pos = char_index, -1
+        else:
+            control_char = reverted_brackets[char]
+            start_pos, end_pos = -1, char_index - 1
+
+        range_end = len(word_str) if direction == 1 else -1
+        for i in range(char_index + direction, range_end, direction):
             if word_str[i].isalpha() or i % 12 == 0:
                 return "", -1, -1
             if word_str[i] == control_char:
