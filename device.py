@@ -155,5 +155,5 @@ class BoilerplateDevice(BaseDevice):
         word = random.choice(word_list)
         start_pos = text_field.index(word)
         word_list.remove(word)
-        all_str = text_field.replace(word, "." * len(word))
-        return start_pos, word_list, text_field
+        new_text_field = text_field.replace(word, "." * len(word))
+        return start_pos, word_list, new_text_field
