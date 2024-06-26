@@ -1,0 +1,26 @@
+[project]
+name = "device_curses"
+version = "0.0.1"
+description = "Curses based terminal hacking game"
+authors = [
+    {name="Vladimir Shutofsky", email='shutofsky@yandex.ru'},
+    {name="Zerth Monk", email='26793601+zerthmonk@users.noreply.github.com'},
+]
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    ".pytest_cache",
+    "templates",
+    "resources",
+]
+fix = true
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
