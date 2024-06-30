@@ -14,7 +14,7 @@ ESSENTIAL = {
         'lock_header' : 'lockScreen.txt',
         'main_header' : 'readScreen.txt',
         'menu_header' : 'menuScreen.txt',
-        'text_menu' : {'Водки лётчикам не давать': {'type':'text','name':'f3Doc.txt'},}
+        'text_menu' : {'Р’РѕРґРєРё Р»С‘С‚С‡РёРєР°Рј РЅРµ РґР°РІР°С‚СЊ!': {'type':'text','name':'f3Doc.txt'},}
 }
 
 # DeviceConfigExtended supports file and json download and management

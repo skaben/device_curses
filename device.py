@@ -1,5 +1,6 @@
 import os
 import time
+import codecs
 
 from skabenclient.device import BaseDevice
 from config import BoilerplateConfig
@@ -30,3 +31,48 @@ class BoilerplateDevice(BaseDevice):
         while self.running:
             # main routine
             time.sleep(100)
+    
+    def loadWords(self, wordLen):    
+        words = []
+        with codecs.open(self.system.get('word_path') + 'words' + str(wordLen) + '.txt','r', 'utf-8') as f:
+            for word in f:
+                words.append(word.strip("\r\n\t "))
+        return words
+    
+    def getStrPos(self, x, y):
+        if x<32:
+            yNew = y
+            xNew = x-8
+        else:
+            yNew = y+17
+            xNew = x-32
+        return (yNew*12+xNew)
+
+    def getStrCoords(self, strPos):
+        if strPos<204:
+            y = int(strPos / 12)
+            x = strPos%12 + 8
+        else:
+            y = int(strPos / 12) - 17
+            x = strPos%12 + 32
+        return (x, y)
+
+    def checkWordPosition(charIndex, wordStr):   # Символ проверим на всякий случай
+        if not wordStr[charIndex].isalpha():
+            return ('', -1, -1)
+        i = charIndex
+        while wordStr[i].isalpha():
+            if i == 0:
+                i = -1
+                break
+            i -= 1
+        startPos = i + 1
+        i = charIndex
+        while wordStr[i].isalpha():
+            if i == len(wordStr)-1:
+                i = len(wordStr)
+                break
+            i += 1
+        endPos = i - 1
+        selWord = wordStr[startPos:endPos+1]
+        return (selWord, startPos, endPos)
