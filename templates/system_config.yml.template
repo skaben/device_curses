@@ -6,3 +6,17 @@
 # password: 'optional mqtt password'
 
 iface: ${iface}
+topic: 'term'
+broker_ip: '192.168.0.254'
+username: 'CHANGEME'
+password: 'CHANGEME'
+screen_path: './resources/screens/'
+text_path: './resources/text/'
+audio_path: './resources/audio/'
+img_path: './resources/images/'
+video_path: './resources/video/'
+word_path: './resources/wordsets/'
+deltaX: 2
+deltaY: 1
+
+#standalone: True # uncomment to run without server
