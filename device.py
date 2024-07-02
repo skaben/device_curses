@@ -51,9 +51,9 @@ class BoilerplateDevice(BaseDevice):
             self.start_terminal()
 
     def check_status(self):
-        if (not self.db_parameters["isPowerOn"] and self.main_conf['previousState'] != "Unpowered") or \
-            (self.db_parameters["isLocked"] and self.main_conf['previousState'] != "Locked") or \
-            (self.db_parameters["isHacked"] and self.main_conf['previousState'] != "Hacked"):
+        if (not self.config.get("isPowerOn") and self.main_conf['previousState'] != "Unpowered") or \
+            (self.config.get("isLocked") and self.main_conf['previousState'] != "Locked") or \
+            (self.config.get("isHacked") and self.main_conf['previousState'] != "Hacked"):
             return(True) 
         if self.main_conf['db_updated']:
             self.main_conf['db_updated'] = False
@@ -69,19 +69,7 @@ class BoilerplateDevice(BaseDevice):
         curses.noecho()
         curses.raw()
         curses.curs_set(2)
-
-    def update_DB_parameters(self):
-        while self.main_conf['is_db_updating']:
-            pass
-        try:
-            self.main_conf['is_db_updating'] = True
-            with codecs.open(self.main_conf['conf_path'] + self.main_conf['conf_name'], 'w', 'utf-8') as f:
-                yaml.dump(self.db_parameters, f, sort_keys=False) 
-        except Exception as err:
-            pass
-        finally:
-            self.main_conf['is_db_updating'] = False
-            
+          
     def load_words(self, word_len):    
         words = []
         with codecs.open(self.main_conf['word_path'] + 'words' + str(word_len) + '.txt','r', 'utf-8') as f:
@@ -257,7 +245,7 @@ class BoilerplateDevice(BaseDevice):
         full_screen_win.clear()
         full_screen_win.refresh()
         full_screen_win.nodelay(True)
-        with codecs.open(self.main_conf['screen_path'] + self.db_parameters[par_name], 'r', 'utf-8') as fh:
+        with codecs.open(self.main_conf['screen_path'] + self.config.get(par_name), 'r', 'utf-8') as fh:
             out_txt_str = fh.read()
         status = self.out_header(out_txt_str, full_screen_win)
         if delay_after > 0:
@@ -296,8 +284,8 @@ class BoilerplateDevice(BaseDevice):
     def hack_screen(self):
         self.clear_screen()
         curses.curs_set(2)
-        word_dict = self.load_words(self.db_parameters['wordLength'])  
-        (pwd, w_list, full_str) = self.gen_string(self.db_parameters['wordsPrinted'], 408, word_dict)
+        word_dict = self.load_words(self.config.get('wordLength'))  
+        (pwd, w_list, full_str) = self.gen_string(self.config.get('wordsPrinted'), 408, word_dict)
         aux_str = [' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, \
                 ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32, ' '*32]
         x = 0
@@ -312,10 +300,10 @@ class BoilerplateDevice(BaseDevice):
         hack_serv_win.nodelay(True)
         hack_main_win.clear()
         hack_main_win.nodelay(True)
-        tries_ast = '* ' * self.db_parameters['attempts']
-        num_tries = self.db_parameters['attempts']
+        tries_ast = '* ' * self.config.get('attempts')
+        num_tries = self.config.get('attempts')
 
-        with codecs.open(self.main_conf['screen_path'] + self.db_parameters['hackHeader'], 'r', 'utf-8') as fh:
+        with codecs.open(self.main_conf['screen_path'] + self.config.get('hackHeader'), 'r', 'utf-8') as fh:
             out_txt_str = fh.read()
 
         if(self.out_header(out_txt_str.format(num_tries, tries_ast), hack_serv_win)):
@@ -403,9 +391,9 @@ class BoilerplateDevice(BaseDevice):
                 # Выбор позиции
                 if word_flag:
                     d_word = self.compare_words(sel_group, pwd)
-                    if d_word < self.db_parameters['wordLength']:
+                    if d_word < self.config.get('wordLength'):
                         aux_str.pop(0)
-                        aux_str.append(sel_group + ' ['+str(d_word)+' OF '+str(self.db_parameters['wordLength'])+']')
+                        aux_str.append(sel_group + ' ['+str(d_word)+' OF '+str(self.config.get('wordLength'))+']')
                         y_aux = 0
                         for t_str in aux_str:
                             hack_aux_win.addstr(y_aux, 0, t_str+'\n', curses.color_pair(1)|curses.A_BOLD)
@@ -427,13 +415,11 @@ class BoilerplateDevice(BaseDevice):
                             hack_serv_win.refresh()
                             hack_main_win.move(y, x)
                         else:   # Блокировка
-                            self.db_parameters["isLocked"] = True
-                            self.update_DB_parameters()
+                            self.state_update('{"isLocked":True}')
                             time.sleep(1)
                             return
                     else:   # Терминал успешно взломан
-                        self.db_parameters["isHacked"] = True
-                        self.update_DB_parameters()
+                        self.state_update('{"isHacked":True}')
                         hack_main_win.clear()
                         hack_main_win.refresh()
                         return
@@ -449,7 +435,7 @@ class BoilerplateDevice(BaseDevice):
                     if r > 1:   # 9 из 10 случаев - удаляем слово
                         (d_pos, w_list, full_str) = self.del_random_word(w_list, full_str)
                         i = d_pos
-                        while i < d_pos + self.db_parameters['wordLength']:
+                        while i < d_pos + self.config.get('wordLength'):
                             (dl_x, dl_y) = self.get_str_coords(i)
                             hack_main_win.addstr(dl_y, dl_x, '.', curses.color_pair(1)|curses.A_BOLD)
                             i += 1
@@ -462,7 +448,7 @@ class BoilerplateDevice(BaseDevice):
                         hack_aux_win.refresh()
                         hack_main_win.move(y, x)
                     else:
-                        num_tries = self.db_parameters['attempts']
+                        num_tries = self.config.get('attempts')
                         tries_ast = '* ' * num_tries
                         y_s = 1
                         x_s = 0
@@ -529,7 +515,7 @@ class BoilerplateDevice(BaseDevice):
         read_serv_win = curses.newwin(4, 80, 0, 0)
         read_serv_win.clear()
         read_serv_win.nodelay(True)
-        with codecs.open(self.main_conf['screen_path'] + self.db_parameters['mainHeader'], 'r', 'utf-8') as fh:
+        with codecs.open(self.main_conf['screen_path'] + self.config.get('mainHeader'), 'r', 'utf-8') as fh:
             out_txt_str = fh.read()
         if(self.out_header(out_txt_str, read_serv_win)):
             return
@@ -585,19 +571,19 @@ class BoilerplateDevice(BaseDevice):
         menu_main_win.refresh()
         x = 0
         y = 0
-        with codecs.open(self.main_conf['screen_path'] + self.db_parameters['menuHeader'], 'r', 'utf-8') as fh:
+        with codecs.open(self.main_conf['screen_path'] + self.config.get('menuHeader'), 'r', 'utf-8') as fh:
             out_txt_str = fh.read()
         if(self.out_header(out_txt_str, menu_serv_win)):
             return
         max_len = 0
         rows = 0
-        for menu_item in self.db_parameters['textMenu'].keys():
+        for menu_item in self.config.get('textMenu').keys():
             if max_len < len(menu_item):
                 max_len = len(menu_item)
             rows += 1
         y = int((21 - rows * 2) / 2)
         x = int((80 - max_len)/2)
-        for menu_item in self.db_parameters['textMenu'].keys():
+        for menu_item in self.config.get('textMenu').keys():
             menu_main_win.addstr(y, x, menu_item, curses.color_pair(1) | curses.A_BOLD)
             menu_sel.append(menu_item)
             y += 2
@@ -626,14 +612,14 @@ class BoilerplateDevice(BaseDevice):
                     menu_pos += 1
             if key == curses.KEY_ENTER or key == 10 or key == 13:  # Enter
                 # Выбор позиции
-                if self.db_parameters['textMenu'][menu_sel[menu_pos]]["type"] == "text":
+                if self.config.get('textMenu')[menu_sel[menu_pos]]["type"] == "text":
                     menu_main_win.clear()
                     menu_serv_win.clear()
                     menu_main_win.refresh()
                     menu_serv_win.refresh()
-                    self.read_screen(self.main_conf['text_path'] + self.db_parameters['textMenu'][menu_sel[menu_pos]]["name"])
-                elif self.db_parameters['textMenu'][menu_sel[menu_pos]]["type"] == "command":
-                    os.system(self.db_parameters['textMenu'][menu_sel[menu_pos]]["name"])
+                    self.read_screen(self.main_conf['text_path'] + self.config.get('textMenu')[menu_sel[menu_pos]]["name"])
+                elif self.config.get('textMenu')[menu_sel[menu_pos]]["type"] == "command":
+                    os.system(self.config.get('textMenu')[menu_sel[menu_pos]]["name"])
                     menu_full_win.clear()
                     menu_main_win.refresh()
                     menu_serv_win.refresh()
@@ -656,25 +642,21 @@ class BoilerplateDevice(BaseDevice):
                 break
             while self.main_conf['is_db_updating']:   # Ожидаем, пока обновится состояние из БД.
                 pass
-            self.update_DB_parameters()
             if self.main_conf['lockTimeOutStart']!=0:
-                if (int(time.monotonic_ns()/1000000)-self.main_conf['lockTimeOutStart']) >= self.db_parameters["lockTimeOut"]*1000:
+                if (int(time.monotonic_ns()/1000000)-self.main_conf['lockTimeOutStart']) >= self.config.get("lockTimeOut")*1000:
                     self.main_conf['lockTimeOutStart'] = 0
-                    self.db_parameters["isLocked"] = False
-                    self.update_DB_parameters()
-            if not self.db_parameters["isPowerOn"]:
+                    self.state_update('{"isLocked":False}')
+            if not self.config.get("isPowerOn"):
                 if self.main_conf['previousState'] != "Unpowered":
                     self.main_conf['previousState'] = "Unpowered"
                     self.out_screen('unPowerHeader', 0)
-                    self.update_DB_parameters()
-                time.sleep(self.main_conf['dbCheckInterval'])
-            elif self.db_parameters["isLocked"]:
+                    time.sleep(self.main_conf['dbCheckInterval'])
+            elif self.config.get("isLocked"):
                 if self.main_conf['previousState'] != "Locked":
                     self.main_conf['lockTimeOutStart'] = int(time.monotonic_ns()/1000000)
                     self.main_conf['previousState'] = "Locked"
                     self.out_screen('lockHeader', 0)
-                    self.update_DB_parameters()
-            elif self.db_parameters["isHacked"]:
+            elif self.config.get("isHacked"):
                 if self.main_conf['previousState'] != "Hacked":
                     self.main_conf['previousState'] = "Hacked"
                     self.menu_screen()  # Здесь вызываем функцию после взлома
