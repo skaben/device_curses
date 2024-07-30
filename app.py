@@ -1,18 +1,15 @@
 import os
-import sys
-import json
 
 from skabenclient.config import SystemConfig
-from skabenclient.helpers import get_mac
 from skabenclient.main import start_app
 
-from device import BoilerplateDevice
 from config import BoilerplateConfig
+from device import BoilerplateDevice
 
 root = os.path.abspath(os.path.dirname(__file__))
 
-sys_config_path = os.path.join(root, 'conf', 'system.yml')
-dev_config_path = os.path.join(root, 'conf', 'device.yml')
+sys_config_path = os.path.join(root, "conf", "system.yml")
+dev_config_path = os.path.join(root, "conf", "device.yml")
 
 
 if __name__ == "__main__":
@@ -36,5 +33,4 @@ if __name__ == "__main__":
     # like device.gpio_setup() for lock device
 
     # start application
-    start_app(app_config=app_config,
-              device=device)
+    start_app(app_config=app_config, device=device)

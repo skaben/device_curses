@@ -13,11 +13,9 @@ exclude = [
     ".pytest_cache",
     "templates",
     "resources",
+    "f3termCurses.py"
 ]
 fix = true
-
-[tool.ruff.lint]
-select = ["I"]
 
 [tool.ruff.format]
 quote-style = "double"
