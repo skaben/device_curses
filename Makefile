@@ -5,6 +5,11 @@ RESET := $(shell tput sgr0)
 
 APP := skaben_device
 
+.PHONY: install-hooks
+install-hooks:  ## Установить хуки pre-commit
+	@python3 -m pip install pre-commit
+	@pre-commit install
+
 .PHONY: build
 build:  ## Собрать контейнер для линтера и тестов
 	@docker-compose build --no-cache
