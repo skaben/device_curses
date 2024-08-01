@@ -162,7 +162,7 @@ class CursesDevice(BaseDevice):
             start_pos = i
         if end_pos == -1:
             end_pos = i - 1
-        cheat_str = word_str[start_pos : end_pos + 2]
+        cheat_str = word_str[start_pos: end_pos + 2]
         return cheat_str, start_pos, end_pos
 
     @staticmethod

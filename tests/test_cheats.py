@@ -1,6 +1,6 @@
 import pytest
 
-from f3termCurses import checkCheatPosition
+from device import CursesDevice
 
 
 @pytest.mark.parametrize(
@@ -19,5 +19,6 @@ from f3termCurses import checkCheatPosition
         ("[word]", 0, ("", -1, -1)),
     ],
 )
-def test_cheat_parenthesis(row, pos, expected):
-    assert checkCheatPosition(pos, row) == expected
+def test_cheat_parenthesis(row, pos, expected, mock_system_config, mock_device_config):
+    _device = CursesDevice(mock_system_config, mock_device_config)
+    assert _device.check_cheat_position(pos, row) == expected
