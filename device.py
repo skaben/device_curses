@@ -7,18 +7,18 @@ import time
 from sys import platform
 from skabenclient.device import BaseDevice
 
-from config import BoilerplateConfig
+from config import CursesConfig
 
 
-class BoilerplateDevice(BaseDevice):
-    """Test device should be able to generate all kind of messages
+class CursesDevice(BaseDevice):
+    """Curses terminal device.
 
     state_reload -> загрузить текущий конфиг из файла
     state_update(data) -> записать конфиг в файл (и послать на сервер)
     send_message(data) -> отправить сообщение от имени девайса во внутреннюю очередь
     """
 
-    config_class = BoilerplateConfig
+    config_class = CursesConfig
 
     rows_count = 16
 

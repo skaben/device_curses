@@ -23,7 +23,7 @@ ESSENTIAL = {
 # use DeviceConfig if you don't need this functionality
 
 
-class BoilerplateConfig(DeviceConfigExtended):
+class CursesConfig(DeviceConfigExtended):
     def __init__(self, config):
         self.minimal_essential_conf = ESSENTIAL
         super().__init__(config)
