@@ -3,5 +3,4 @@
 
 pygame>=2.6.0
 pyaml==18.11.0
-skabenclient>=1.16.10
-skabenproto>=1.18.0
+skabenclient>=1.18
