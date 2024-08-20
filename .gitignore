@@ -3,7 +3,8 @@
 .idea
 timestamp
 *.log
-conf/*
+conf/
+resources/
 .idea/
 
 # Byte-compiled / optimized / DLL files
