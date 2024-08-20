@@ -29,19 +29,10 @@ lint:  ## Запустить линтер для авто-форматирова
 	@docker-compose run --rm ${APP} ruff check --no-cache . && ruff format --no-cache .
 
 .PHONY: install
-install:  ##  установить зависимости
-	@sudo apt-get install -y --no-install-recommends libglib2.0-0 iproute2 curl gcc portaudio19-dev python3-pyaudio
-	@python${PYTHON_VERSION} -m venv ${VENV}
-	@${PYTHON_PATH} -m pip install --upgrade pip
-	@${PYTHON_PATH} -m pip install -r requirements.txt
-
-.PHONY: config
-config:  ##  создать конфиг по умолчанию
-	@mkdir conf resources
-	@chmod +x ./templates/make-conf.sh
-	@sh ./templates/make-conf.sh
-	@tar xvf resources.tar.gz
-	@echo 'config created, check ./conf'
+install:  ##  создать конфиг по умолчанию
+	@rm -rf conf resources
+	@chmod +x pre-run.sh
+	@./pre-run.sh install
 
 .PHONY: run
 run:  ##  run application
