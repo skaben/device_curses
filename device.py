@@ -1,24 +1,26 @@
-import codecs
 import curses
 import os
 import random
 import string
 import time
 
+from sys import platform
 from skabenclient.device import BaseDevice
 
-from config import BoilerplateConfig
+from config import CursesConfig
 
 
-class BoilerplateDevice(BaseDevice):
-    """Test device should be able to generate all kind of messages
+class CursesDevice(BaseDevice):
+    """Curses terminal device.
 
     state_reload -> загрузить текущий конфиг из файла
     state_update(data) -> записать конфиг в файл (и послать на сервер)
     send_message(data) -> отправить сообщение от имени девайса во внутреннюю очередь
     """
 
-    config_class = BoilerplateConfig
+    config_class = CursesConfig
+
+    rows_count = 16
 
     _screen_path = os.path.join(os.getcwd(), "resources/screens/")
     _text_path = os.path.join(os.getcwd(), "resources/text/")
@@ -27,7 +29,7 @@ class BoilerplateDevice(BaseDevice):
     _video_path = os.path.join(os.getcwd(), "resources/video/")
     _word_path = os.path.join(os.getcwd(), "resources/wordsets/")
 
-    def __init__(self, system_config, device_config, **kwargs):
+    def __init__(self, system_config, device_config):
         super().__init__(system_config, device_config)
         self.running = None
         main_conf = dict()
@@ -49,13 +51,14 @@ class BoilerplateDevice(BaseDevice):
         while self.running:
             self.start_terminal()
 
-    def check_status(self):
-        if (
-            (not self.config.get("isPowerOn") and self.main_conf["previousState"] != "Unpowered")
-            or (self.config.get("isLocked") and self.main_conf["previousState"] != "Locked")
-            or (self.config.get("isHacked") and self.main_conf["previousState"] != "Hacked")
-        ):
-            return True
+    def check_status(self) -> bool:
+        conditions = [
+            self.main_conf["previousState"] != "Unpowered" and not self.config.get("isPowerOn"),
+            self.config.get("isLocked") and self.main_conf["previousState"] != "Locked",
+            self.config.get("isHacked") and self.main_conf["previousState"] != "Hacked",
+        ]
+        if all(conditions):
+            return all(conditions)
         if self.main_conf["db_updated"]:
             self.main_conf["db_updated"] = False
         return False
@@ -71,15 +74,13 @@ class BoilerplateDevice(BaseDevice):
         curses.raw()
         curses.curs_set(2)
 
-    def load_words(self, word_len):
-        words = []
-        with codecs.open(self.main_conf["word_path"] + "words" + str(word_len) + ".txt", "r", "utf-8") as f:
-            for word in f:
-                words.append(word.strip("\r\n\t "))
+    def load_words(self, word_len: int) -> list[str]:
+        with open(os.path.join(self.main_conf["word_path"], f"words{word_len}.txt")) as fh:
+            words = [word.strip("\r\n\t ") for word in fh.readlines()]
         return words
 
     @staticmethod
-    def get_str_pos(x, y):
+    def get_str_pos(x: int, y: int):
         if x < 32:
             y_new = y
             x_new = x - 8
@@ -89,19 +90,19 @@ class BoilerplateDevice(BaseDevice):
         return y_new * 12 + x_new
 
     @staticmethod
-    def get_str_coords(str_pos):
+    def get_str_coords(str_pos: int) -> tuple[int, int]:
         if str_pos < 204:
             y = int(str_pos / 12)
             x = str_pos % 12 + 8
         else:
             y = int(str_pos / 12) - 17
             x = str_pos % 12 + 32
-        return (x, y)
+        return x, y
 
     @staticmethod
-    def check_word_position(char_index, word_str):  # Символ проверим на всякий случай
+    def check_word_position(char_index: int, word_str: str) -> tuple[str, int, int]:  # Символ проверим на всякий случай
         if not word_str[char_index].isalpha():
-            return ("", -1, -1)
+            return "", -1, -1
         i = char_index
         while word_str[i].isalpha():
             if i == 0:
@@ -117,52 +118,63 @@ class BoilerplateDevice(BaseDevice):
             i += 1
         end_pos = i - 1
         sel_word = word_str[start_pos : end_pos + 1]
-        return (sel_word, start_pos, end_pos)
+        return sel_word, start_pos, end_pos
 
     @staticmethod
-    def check_cheat_position(char_index, word_str):
+    def check_cheat_position(char_index: int, word_str: str) -> tuple[str, int, int]:
         left_par = ["[", "(", "{", "<"]
         right_par = ["]", ")", "}", ">"]
         direct = 0
         start_pos = -1
         end_pos = -1
+        control_char = 0
+
         if word_str[char_index] in left_par:
             direct = 1
             start_pos = char_index
             control_char = right_par[left_par.index(word_str[char_index])]
+
         if word_str[char_index] in right_par:
             direct = -1
             end_pos = char_index - 1
             control_char = left_par[right_par.index(word_str[char_index])]
+
         if direct == 0:
-            return ("", -1, -1)
+            return "", -1, -1
+
         i = char_index + direct
         if i > (len(word_str) - 1) or i < 0:
-            return ("", -1, -1)
+            return "", -1, -1
         start_sub_str = int(char_index / 12) * 12
         end_sub_str = start_sub_str + 11
         i = char_index
+
+        if not control_char:
+            raise ValueError("missing control char")
+
         while word_str[i] != control_char:
             if word_str[i].isalpha():
-                return ("", -1, -1)
+                return "", -1, -1
             i += direct
             if i <= start_sub_str or i > end_sub_str:
-                return ("", -1, -1)
+                return "", -1, -1
         if start_pos == -1:
             start_pos = i
         if end_pos == -1:
             end_pos = i - 1
-        cheat_str = word_str[start_pos : end_pos + 2]
-        return (cheat_str, start_pos, end_pos)
+        cheat_str = word_str[start_pos: end_pos + 2]
+        return cheat_str, start_pos, end_pos
 
     @staticmethod
-    def del_from_str(all_str, start_pos, end_pos):
+    def del_from_str(all_str: str, start_pos: int, end_pos: int) -> str:
         new_str = all_str[0:start_pos] + "." * (end_pos - start_pos) + all_str[end_pos:]
         return new_str
 
-    def gen_string(self, word_quan, str_len, dictionary):
-        # Функция формирует строку для вывода в терминал. Строка представляет собой 'мусорные' символы,
-        # между которыми вставлены слова для подбора пароля.
+    def gen_string(self, word_quan: int, str_len: int, dictionary: list[str]) -> tuple[str, list[str], str]:
+        """
+        Функция формирует строку для вывода в терминал. Строка представляет собой 'мусорные' символы,
+        между которыми вставлены слова для подбора пароля.
+        """
         password = dictionary[random.randint(0, len(dictionary) - 1)]
         word_len = len(dictionary[0])
         word_list = self.words_select(dictionary, password, word_quan)
@@ -190,7 +202,7 @@ class BoilerplateDevice(BaseDevice):
         return password, word_list, screen_str
 
     @staticmethod
-    def compare_words(f_word, s_word):
+    def compare_words(f_word: str, s_word: str) -> int:
         i = 0
         count = 0
         for char in f_word:
@@ -199,7 +211,7 @@ class BoilerplateDevice(BaseDevice):
             i += 1
         return count
 
-    def words_select(self, words, pwd, word_quan):
+    def words_select(self, words: str, pwd: str, word_quan: int) -> list[str]:
         word_len = len(pwd)
         word_list_max = []  # Слова, максимально похожие по расположению букв на слово-пароль
         word_list_zero = []  # Слова, совершенно не имеющие одинаково расположенных букв с паролем
@@ -232,28 +244,32 @@ class BoilerplateDevice(BaseDevice):
         return word_list_selected
 
     @staticmethod
-    def del_random_word(word_list, all_str):
+    def del_random_word(word_list: list[str], all_str: str) -> tuple[int, list[str], str]:
         word_num = random.randint(0, len(word_list) - 1)
         word = word_list[word_num]
         start_pos = all_str.index(word)
         word_list.remove(word)
         all_str = all_str.replace(word, "." * len(word))
-        return (start_pos, word_list, all_str)
+        return start_pos, word_list, all_str
 
-    def out_screen(self, par_name, delay_after=2):
+    def out_screen(self, par_name: str, delay_after=2) -> bool:
         curses.curs_set(2)
         full_screen_win = curses.newwin(24, 80, 0, 0)
         full_screen_win.clear()
         full_screen_win.refresh()
         full_screen_win.nodelay(True)
-        with codecs.open(self.main_conf["screen_path"] + self.config.get(par_name), "r", "utf-8") as fh:
+        _par_name: str = self.config.get(par_name)
+        if not _par_name:
+            raise ValueError("missing par_name")
+
+        with open(os.path.join(self.main_conf["screen_path"], _par_name)) as fh:
             out_txt_str = fh.read()
         status = self.out_header(out_txt_str, full_screen_win)
         if delay_after > 0:
             time.sleep(delay_after)
         return status
 
-    def out_header(self, out_str, win):
+    def out_header(self, out_str: str, win: curses.window) -> bool:
         win.clear()
         win.refresh()
         win.nodelay(True)
@@ -278,36 +294,21 @@ class BoilerplateDevice(BaseDevice):
 
     @staticmethod
     def clear_screen():
-        fullScreenWin = curses.newwin(24, 80, 0, 0)
-        fullScreenWin.clear()
-        fullScreenWin.refresh()
+        full_screen = curses.newwin(24, 80, 0, 0)
+        full_screen.clear()
+        full_screen.refresh()
 
     def hack_screen(self):
         self.clear_screen()
         curses.curs_set(2)
         word_dict = self.load_words(self.config.get("wordLength"))
         (pwd, w_list, full_str) = self.gen_string(self.config.get("wordsPrinted"), 408, word_dict)
-        aux_str = [
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-            " " * 32,
-        ]
+
+        aux_str = [[" " * 32] for _ in range(self.rows_count)]
         x = 0
         y = 1
         my_delay = self.main_conf["delayTime"]
+
         hack_serv_win = curses.newwin(7, 80, 0, 0)
         hack_main_win = curses.newwin(18, 44, 7, 0)
         hack_cursor_win = curses.newwin(18, 3, 7, 44)
@@ -317,10 +318,14 @@ class BoilerplateDevice(BaseDevice):
         hack_serv_win.nodelay(True)
         hack_main_win.clear()
         hack_main_win.nodelay(True)
-        tries_ast = "* " * self.config.get("attempts")
-        num_tries = self.config.get("attempts")
 
-        with codecs.open(self.main_conf["screen_path"] + self.config.get("hackHeader"), "r", "utf-8") as fh:
+        tries_ast = "* " * self.config.get("attempts", 0)
+        num_tries = self.config.get("attempts", 0)
+
+        hack_header = self.config.get("hackHeader")
+        if not hack_header:
+            raise ValueError("missing hack_header")
+        with open(os.path.join(self.main_conf["screen_path"], hack_header)) as fh:
             out_txt_str = fh.read()
 
         if self.out_header(out_txt_str.format(num_tries, tries_ast), hack_serv_win):
@@ -367,7 +372,7 @@ class BoilerplateDevice(BaseDevice):
         word_flag = False
         cheat_flag = False
         mss_time = int(time.monotonic_ns() / 1000000)
-        while True:  # Основной цикл
+        while self.running:  # Основной цикл
             msc_time = int(time.monotonic_ns() / 1000000)
             if msc_time >= (mss_time + 3000):
                 mss_time = msc_time
@@ -404,8 +409,8 @@ class BoilerplateDevice(BaseDevice):
                     y = 0
                 else:
                     y += 1
+
             if key == curses.KEY_ENTER or key == 10 or key == 13:  # Enter
-                # Выбор позиции
                 if word_flag:
                     d_word = self.compare_words(sel_group, pwd)
                     if d_word < self.config.get("wordLength"):
@@ -529,32 +534,39 @@ class BoilerplateDevice(BaseDevice):
                     hack_HL_win.refresh()
                 hack_main_win.move(y, x)
 
-    def read_screen(self, fName):
+    def read_screen(self, file_name: str):
         curses.curs_set(2)
         read_serv_win = curses.newwin(4, 80, 0, 0)
         read_serv_win.clear()
         read_serv_win.nodelay(True)
-        with codecs.open(self.main_conf["screen_path"] + self.config.get("mainHeader"), "r", "utf-8") as fh:
+        main_header = self.config.get("mainHeader")
+        if not main_header:
+            raise ValueError("main_header not defined")
+        with open(os.path.join(self.main_conf["screen_path"], main_header)) as fh:
             out_txt_str = fh.read()
         if self.out_header(out_txt_str, read_serv_win):
             return
+
         if platform == "linux" or platform == "linux2":
-            with open(fName, "r") as fh:
+            with open(file_name) as fh:
                 out_txt_str = fh.read()
         else:
-            with codecs.open(fName, "r", "utf-8") as fh:
+            with open(file_name) as fh:
                 out_txt_str = fh.read()
+
         out_txt_list = out_txt_str.split("\n")
         read_text_pad = curses.newpad(int(len(out_txt_list) / 20 + 1) * 20, 80)
-        for str in out_txt_list:
-            read_text_pad.addstr(str + "\n", curses.color_pair(1) | curses.A_BOLD)
+
+        for _str in out_txt_list:
+            read_text_pad.addstr(_str + "\n", curses.color_pair(1) | curses.A_BOLD)
+
         read_text_pad.refresh(0, 0, 4, 0, 23, 78)
         curses.curs_set(0)
         read_serv_win.nodelay(False)
         read_serv_win.keypad(True)
         row_pos = 0
         mss_time = int(time.monotonic_ns() / 1000000)
-        while True:
+        while self.running:
             msc_time = int(time.monotonic_ns() / 1000000)
             if msc_time >= (mss_time + 3000):
                 mss_time = msc_time
@@ -590,8 +602,12 @@ class BoilerplateDevice(BaseDevice):
         menu_main_win.refresh()
         x = 0
         y = 0
-        with codecs.open(self.main_conf["screen_path"] + self.config.get("menuHeader"), "r", "utf-8") as fh:
+        menu_header = self.config.get("menuHeader")
+        if not menu_header:
+            raise ValueError("menu_header not defined")
+        with open(os.path.join(self.main_conf["screen_path"], menu_header)) as fh:
             out_txt_str = fh.read()
+
         if self.out_header(out_txt_str, menu_serv_win):
             return
         max_len = 0
@@ -612,7 +628,7 @@ class BoilerplateDevice(BaseDevice):
         menu_main_win.refresh()
         menu_main_win.keypad(True)
         curses.curs_set(0)
-        while True:
+        while self.running:
             f = False
             key = menu_main_win.getch()
             if key == curses.KEY_UP or key == 259 or key == ord("W") or key == ord("w"):
@@ -636,9 +652,8 @@ class BoilerplateDevice(BaseDevice):
                     menu_serv_win.clear()
                     menu_main_win.refresh()
                     menu_serv_win.refresh()
-                    self.read_screen(
-                        self.main_conf["text_path"] + self.config.get("textMenu")[menu_sel[menu_pos]]["name"]
-                    )
+                    menu = self.config.get("textMenu", {})[menu_sel[menu_pos]]["name"]
+                    self.read_screen(str(os.path.join(self.main_conf["text_path"], menu)))
                 elif self.config.get("textMenu")[menu_sel[menu_pos]]["type"] == "command":
                     os.system(self.config.get("textMenu")[menu_sel[menu_pos]]["name"])
                     menu_full_win.clear()
@@ -651,22 +666,25 @@ class BoilerplateDevice(BaseDevice):
                 f = False
 
     def start_terminal(self):
-        #   Основной игровой цикл.
-        #
-        # Предыдущее состояние терминала. Если не совпадает с текущим - будет выполнена очистка и перерисовка экрана.
-        # Unpowerd - нет питания. Locked  - заблокирован. Hacked - взломан. Normal - запитан, ждет взлома.
-        # Broken - сломан
+        """
+        Основной игровой цикл.
+        Предыдущее состояние терминала. Если не совпадает с текущим - будет выполнена очистка и перерисовка экрана.
+        Unpowered - нет питания.
+        Locked - заблокирован.
+        Hacked - взломан.
+        Normal - запитан, ждет взлома.
+        Broken - сломан.
+        """
         self.init_curses()
-        while True:
+        while self.running:
             self.main_conf["db_updated"] = False
             if self.main_conf["forceClose"]:
                 break
             while self.main_conf["is_db_updating"]:  # Ожидаем, пока обновится состояние из БД.
                 pass
-            if self.main_conf["lockTimeOutStart"] != 0:
-                if (int(time.monotonic_ns() / 1000000) - self.main_conf["lockTimeOutStart"]) >= self.config.get(
-                    "lockTimeOut"
-                ) * 1000:
+            lock_timeout_start = self.main_conf.get("lockTimeOutStart", 0)
+            if lock_timeout_start != 0:
+                if int(time.monotonic_ns() / 1000000 - lock_timeout_start) >= self.config.get("lockTimeOut", 0) * 1000:
                     self.main_conf["lockTimeOutStart"] = 0
                     self.state_update('{"isLocked":False}')
             if not self.config.get("isPowerOn"):

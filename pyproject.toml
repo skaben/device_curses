@@ -13,11 +13,13 @@ exclude = [
     ".pytest_cache",
     "templates",
     "resources",
+    "f3termCurses.py"
 ]
 fix = true
 
 [tool.ruff.lint]
-select = ["I"]
+select = ["E4", "E7", "E9", "F", "W"]
+ignore = ["C901"]
 
 [tool.ruff.format]
 quote-style = "double"

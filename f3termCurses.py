@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 import codecs
 import curses
-import json
 import os
 import random
-import socket
 import string
 import threading
 import time
@@ -13,7 +11,6 @@ import time
 # import netifaces
 from sys import platform
 
-import paho.mqtt.client as mqtt
 import yaml
 
 db_parameters = dict()

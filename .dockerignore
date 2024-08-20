@@ -1,0 +1,7 @@
+docker-compose.yml
+Dockerfile
+README.md
+.pre-commit-config.yaml
+venv
+templates
+.venv
