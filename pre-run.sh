@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PYVER='3.7'
+PYVER='3.10'
 trap "exit" INT
 
 help () 
@@ -14,13 +14,13 @@ if [[ -z $1 ]]; then
 fi
 
 manual () {
-  echo -e "> manual process:\n"\
-    "   python3.7 python3.7-venv should be installed\n"\
-    "   python3.7 -m venv venv\n"\
+  echo -e "Manual deployment process:\n\n"\
+    "   python${PYVER} python${PYVER}-venv should be installed\n"\
+    "   python${PYVER} -m venv venv\n"\
     "   source ./venv/bin/activate\n"\
     "   pip install --upgrade pip\n"\
     "   pip install -r requirements.txt\n"\
-    "   ./deploy.sh reset\n"
+    "   ./pre-run.sh reset\n"
   exit
 }
 
@@ -37,11 +37,10 @@ check_uname () {
 deploy () {
 
   PYTHON=""
-  PYDEV="python$PYVER-dev"
   PYTHON_VENV="python3-venv"
    
   subver=$(python3 -c 'import sys; print(sys.version_info[1])')
-  standalone=$(python3.7 --version)
+  standalone=$(python${PYVER} --version)
   
   if [[ $standalone == "" ]] && [[ $((subver + 0)) != 7 ]]; then
     echo '[!] application require python'$PYVER
@@ -49,8 +48,6 @@ deploy () {
     echo -e "trying to install python"$PYVER
     PYTHON="python$PYVER"
   fi
-
-  
 
   echo -e "> installing dependencies with apt"
   sudo apt-get install -y --no-install-recommends $PYTHON $PYTHON_VENV $PYDEV
@@ -62,6 +59,9 @@ deploy () {
   if [ -d "conf" ]; then
     rm -rf "conf"
   fi
+  if [ -d "resources" ]; then
+    rm -rf "resources"
+  fi
   mkdir conf
   python$PYVER -m venv venv
   source "./venv/bin/activate"
@@ -69,6 +69,7 @@ deploy () {
   $PY -m pip install --upgrade pip
   pip install -r requirements.txt --no-cache-dir
   echo -e "> virtual environment set, unpacking resources"
+  tar xf resources.tar.gz
   echo -e "... done!\n"
   echo -e "\n  --------"
 
@@ -78,7 +79,7 @@ deploy () {
 
 reset () 
 {
-  echo -e "[>] resetting __ BOILERPLATE __ device configuration"
+  echo -e "[>] resetting Curses device configuration"
   iface=$(ip route | grep "default" | sed -nr 's/.*dev ([^\ ]+).*/\1/p')
   local_path=$(pwd)
   sed -e "s/\${iface}/'$iface'/" \
