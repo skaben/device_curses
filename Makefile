@@ -5,6 +5,12 @@ RESET := $(shell tput sgr0)
 
 APP := skaben_device
 
+DIST ?= dist.tar.gz
+VENV ?= ~/skaben-term-venv
+PYTHON_VERSION := 3.10
+PYTHON_PATH := ${VENV}/bin/python${PYTHON_VERSION}
+
+
 .PHONY: install-hooks
 install-hooks:  ## Установить хуки pre-commit
 	@python3 -m pip install pre-commit
@@ -21,6 +27,33 @@ test:  ## Запустить тесты
 .PHONY: lint-fix
 lint:  ## Запустить линтер для авто-форматирования
 	@docker-compose run --rm ${APP} ruff check --no-cache . && ruff format --no-cache .
+
+.PHONY: install
+install:  ##  установить зависимости
+	@sudo apt-get install -y --no-install-recommends libglib2.0-0 iproute2 curl gcc portaudio19-dev python3-pyaudio
+	@python${PYTHON_VERSION} -m venv ${VENV}
+	@${PYTHON_PATH} -m pip install --upgrade pip
+	@${PYTHON_PATH} -m pip install -r requirements.txt
+
+.PHONY: config
+config:  ##  создать конфиг по умолчанию
+	@mkdir conf resources
+	@chmod +x ./templates/make-conf.sh
+	@sh ./templates/make-conf.sh
+	@tar xvf resources.tar.gz
+	@echo 'config created, check ./conf'
+
+.PHONY: run
+run:  ##  run application
+	@${PYTHON} app.py
+
+.PHONY: clean
+clean:  ##  clean application running conf
+	@rm -rf ./conf
+	@rm -rf ./resources
+
+.PHONY: init
+init:  clean config front  ##  полная инициализация с нуля
 
 .PHONY: help
 help:
